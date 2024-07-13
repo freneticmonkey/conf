@@ -264,6 +264,37 @@ func TestParse(t *testing.T) {
 				t.Run(tt.name, f)
 			}
 		}
+
+		for i, tt := range tests {
+			t.Logf("\tTest: %d\tWhen checking with arguments %v using environment overrides", i, tt.args)
+			{
+				envs := []string{}
+
+				for k, v := range tt.envs {
+					envs = append(envs, fmt.Sprintf("%s=%s", k, v))
+				}
+
+				envf := func() []string {
+					return envs
+				}
+
+				f := func(t *testing.T) {
+
+					var cfg config
+					if _, err := conf.ParseWithEnv(tt.args, envf, "TEST", &cfg); err != nil {
+						t.Fatalf("\t%s\tShould be able to Parse arguments : %s.", failed, err)
+					}
+					t.Logf("\t%s\tShould be able to Parse arguments.", success)
+
+					if diff := cmp.Diff(tt.want, cfg); diff != "" {
+						t.Fatalf("\t%s\tShould have properly initialized struct value\n%s", failed, diff)
+					}
+					t.Logf("\t%s\tShould have properly initialized struct value.", success)
+				}
+
+				t.Run(tt.name, f)
+			}
+		}
 	}
 }
 

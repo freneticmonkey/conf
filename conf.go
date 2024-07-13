@@ -26,14 +26,23 @@ type Parsers interface {
 
 // =============================================================================
 
-// Parse parses the specified config struct. This function will
-// apply the defaults first and then apply environment variables and
-// command line argument overrides to the struct. ErrHelpWanted is
-// returned when the --help or --version are detected.
+// Parse parses the specified config struct using the os.Args cli flags slice
+// and os.Environ() call to get the environment variables.
 func Parse(prefix string, cfg interface{}, parsers ...Parsers) (string, error) {
-	var args []string
-	if len(os.Args) > 1 {
-		args = os.Args[1:]
+	return ParseWithEnv(os.Args, os.Environ, prefix, cfg, parsers...)
+}
+
+// ParseWithEnv parses the specified config struct. This function will
+// apply the defaults first and then apply environment variables and
+// command line argument overrides to the struct.
+// ErrHelpWanted is returned when the --help or --version are detected.
+// This function allows the caller to set the cli args and environment
+// variables, enabling testing to be able to use this function in
+// parallel without any dependencies on the actual environment state.
+func ParseWithEnv(args []string, env EnvFunc, prefix string, cfg interface{}, parsers ...Parsers) (string, error) {
+
+	if len(args) > 1 {
+		args = args[1:]
 	}
 
 	for _, parser := range parsers {
@@ -42,7 +51,7 @@ func Parse(prefix string, cfg interface{}, parsers ...Parsers) (string, error) {
 		}
 	}
 
-	err := parse(args, prefix, cfg)
+	err := parse(args, env, prefix, cfg)
 	if err == nil {
 		return "", nil
 	}
@@ -151,13 +160,13 @@ func VersionInfo(namespace string, v interface{}) (string, error) {
 // =============================================================================
 
 // parse parses configuration into the provided struct.
-func parse(args []string, namespace string, cfgStruct interface{}) error {
+func parse(args []string, environment EnvFunc, namespace string, cfgStruct interface{}) error {
 	// Create the flag and env sources.
 	flag, err := newSourceFlag(args)
 	if err != nil {
 		return err
 	}
-	sources := []sourcer{newSourceEnv(namespace), flag}
+	sources := []sourcer{newSourceEnv(namespace, environment), flag}
 
 	// Get the list of fields from the configuration struct to process.
 	fields, err := extractFields(nil, cfgStruct)

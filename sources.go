@@ -3,7 +3,6 @@ package conf
 import (
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 )
 
@@ -27,6 +26,8 @@ type sourcer interface {
 // =============================================================================
 // Environment Variable Sourcer
 
+type EnvFunc func() []string
+
 // env is a source for environmental variables.
 type env struct {
 	m map[string]string
@@ -34,7 +35,7 @@ type env struct {
 
 // newSourceEnv accepts a namespace and parses the environment into a Env for
 // use by the configuration package.
-func newSourceEnv(namespace string) *env {
+func newSourceEnv(namespace string, environment EnvFunc) *env {
 	m := make(map[string]string)
 
 	// Create the uppercase version to meet the standard {NAMESPACE_} format.
@@ -45,7 +46,7 @@ func newSourceEnv(namespace string) *env {
 	}
 
 	// Loop and match each variable using the uppercase namespace.
-	for _, val := range os.Environ() {
+	for _, val := range environment() {
 		if !strings.HasPrefix(val, uspace) {
 			continue
 		}
